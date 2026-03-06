@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Finance Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --primary: #2C3E50;
+    --accent: #1ABC9C;
+    --positive: #27AE60;
+    --negative: #E74C3C;
+    --neutral: #95A5A6;
+    --bg: #ECF0F1;
+    --card: #FFFFFF;
+    --text: #2C3E50;
+    --text-light: #7F8C8D;
+    --blue: #3498DB;
+    --purple: #9B59B6;
+    --orange: #E67E22;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--primary), #34495E);
+    color: white;
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header .subtitle { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+
+  /* Tab Navigation */
+  .tabs {
+    display: flex;
+    background: var(--primary);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    color: white;
+    border-bottom-color: var(--accent);
+  }
+
+  /* Filter Bar */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    background: white;
+    border-bottom: 1px solid #DEE2E6;
+    overflow-x: auto;
+  }
+  .filter-bar select {
+    padding: 6px 10px;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text);
+    background: white;
+    min-width: 90px;
+  }
+
+  /* Page Content */
+  .page { display: none; padding: 12px; }
+  .page.active { display: block; }
+
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .kpi-card.wide { grid-column: span 2; }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .kpi-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .kpi-value.small { font-size: 20px; }
+  .kpi-change {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .kpi-change.up { color: var(--positive); }
+  .kpi-change.down { color: var(--negative); }
+  .kpi-sparkline { margin-top: 6px; height: 30px; }
+
+  /* Chart Cards */
+  .chart-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .chart-container {
+    position: relative;
+    width: 100%;
+  }
+  .chart-container canvas { width: 100% !important; }
+
+  /* Table */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .data-table th {
+    text-align: left;
+    padding: 8px 6px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    border-bottom: 2px solid var(--bg);
+  }
+  .data-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--bg);
+  }
+  .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .data-table .pos { color: var(--positive); }
+  .data-table .neg { color: var(--negative); }
+
+  /* Gauge */
+  .gauge-wrapper { text-align: center; padding: 8px 0; }
+  .gauge-value { font-size: 28px; font-weight: 700; }
+  .gauge-label { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+  .gauge-bar {
+    width: 100%;
+    height: 8px;
+    background: #E8E8E8;
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .gauge-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+  }
+
+  /* Progress */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .progress-label { font-size: 12px; min-width: 90px; }
+  .progress-bar { flex: 1; height: 20px; background: #E8E8E8; border-radius: 4px; overflow: hidden; position: relative; }
+  .progress-fill { height: 100%; border-radius: 4px; }
+  .progress-value { font-size: 11px; min-width: 55px; text-align: right; font-weight: 600; }
+
+  /* Section divider */
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-light);
+    margin: 16px 0 8px 0;
+    font-weight: 600;
+  }
+
+  /* Loading */
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+    font-size: 14px;
+  }
+  .loading .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--bg);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (min-width: 480px) {
+    .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+    .kpi-card.wide { grid-column: span 2; }
+    .kpi-value { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Finance Dashboard</h1>
+  <div class="subtitle">Power BI Demo - Interactive Preview</div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-page="summary">Summary</div>
+  <div class="tab" data-page="pnl">P&L</div>
+  <div class="tab" data-page="budget">Budget</div>
+  <div class="tab" data-page="cashflow">Cash Flow</div>
+  <div class="tab" data-page="department">Departments</div>
+</div>
+
+<div class="filter-bar">
+  <select id="filterYear"><option value="all">All Years</option></select>
+  <select id="filterQuarter">
+    <option value="all">All Quarters</option>
+    <option value="1">Q1</option>
+    <option value="2">Q2</option>
+    <option value="3">Q3</option>
+    <option value="4">Q4</option>
+  </select>
+</div>
+
+<div id="loading" class="loading">
+  <div class="spinner"></div>
+  Loading financial data...
+</div>
+
+<!-- PAGE 1: Executive Summary -->
+<div class="page" id="page-summary">
+  <div class="kpi-grid" id="kpi-summary"></div>
+  <div class="chart-card">
+    <div class="chart-title">Revenue & Net Income Trend</div>
+    <div class="chart-container"><canvas id="chartRevTrend"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Revenue by Department</div>
+    <div class="chart-container"><canvas id="chartRevDept"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Expense Breakdown</div>
+    <div class="chart-container"><canvas id="chartExpBreakdown"></canvas></div>
+  </div>
+</div>
+
+<!-- PAGE 2: P&L -->
+<div class="page" id="page-pnl">
+  <div class="kpi-grid" id="kpi-pnl"></div>
+  <div class="chart-card">
+    <div class="chart-title">Income Statement Waterfall</div>
+    <div class="chart-container"><canvas id="chartWaterfall"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Quarterly P&L</div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="tablePnl"></table>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Margin Trend</div>
+    <div class="chart-container"><canvas id="chartMarginTrend"></canvas></div>
+  </div>
+</div>
+
+<!-- PAGE 3: Budget Variance -->
+<div class="page" id="page-budget">
+  <div class="kpi-grid" id="kpi-budget"></div>
+  <div class="chart-card">
+    <div class="chart-title">Actual vs Budget (Monthly Revenue)</div>
+    <div class="chart-container"><canvas id="chartBudgetComp"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Variance by Account</div>
+    <div class="chart-container"><canvas id="chartVarianceAcct"></canvas></div>
+  </div>
+</div>
+
+<!-- PAGE 4: Cash Flow -->
+<div class="page" id="page-cashflow">
+  <div class="kpi-grid" id="kpi-cf"></div>
+  <div class="chart-card">
+    <div class="chart-title">Cash Flow by Activity</div>
+    <div class="chart-container"><canvas id="chartCfActivity"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Monthly Cash Flow Trend</div>
+    <div class="chart-container"><canvas id="chartCfTrend"></canvas></div>
+  </div>
+</div>
+
+<!-- PAGE 5: Departments -->
+<div class="page" id="page-department">
+  <div class="chart-card">
+    <div class="chart-title">Revenue by Department</div>
+    <div id="deptBars"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Department Performance</div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="tableDept"></table>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Revenue by Region</div>
+    <div class="chart-container"><canvas id="chartRegion"></canvas></div>
+  </div>
+</div>
+
+<script>
+// ========================================================================
+// DATA LOADING & PROCESSING
+// ========================================================================
+const DATA = {};
+const CHARTS = {};
+const ACCT_MAP = {};
+const DEPT_MAP = {};
+
+const FILES = [
+  'DimAccounts.csv', 'DimDepartments.csv', 'DimCostCenters.csv',
+  'FactTransactions.csv', 'FactBudget.csv', 'FactCashFlow.csv'
+];
+
+Chart.defaults.font.family = "-apple-system, 'Segoe UI', Roboto, sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.boxWidth = 10;
+Chart.defaults.plugins.legend.labels.padding = 12;
+
+function fmt(n) {
+  if (Math.abs(n) >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
+  return '$' + n.toFixed(0);
+}
+function fmtPct(n) { return (n * 100).toFixed(1) + '%'; }
+function monthLabel(m) { return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]; }
+
+async function loadData() {
+  for (const f of FILES) {
+    const text = await fetch('../data/' + f).then(r => r.text());
+    const result = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
+    DATA[f.replace('.csv','')] = result.data;
+  }
+
+  DATA.DimAccounts.forEach(a => ACCT_MAP[a.AccountID] = a);
+  DATA.DimDepartments.forEach(d => DEPT_MAP[d.DepartmentID] = d);
+
+  // Populate year filter
+  const years = [...new Set(DATA.FactTransactions.map(t => Math.floor(t.DateKey / 10000)))].sort();
+  const sel = document.getElementById('filterYear');
+  years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y; sel.appendChild(o); });
+  sel.value = years[years.length - 1]; // default to latest
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('page-summary').classList.add('active');
+  render();
+}
+
+// ========================================================================
+// FILTERS
+// ========================================================================
+function getFilters() {
+  const year = document.getElementById('filterYear').value;
+  const quarter = document.getElementById('filterQuarter').value;
+  return { year: year === 'all' ? null : +year, quarter: quarter === 'all' ? null : +quarter };
+}
+
+function filterTxn(rows, f) {
+  return rows.filter(r => {
+    const y = Math.floor(r.DateKey / 10000);
+    const m = Math.floor((r.DateKey % 10000) / 100);
+    const q = Math.ceil(m / 3);
+    if (f.year && y !== f.year) return false;
+    if (f.quarter && q !== f.quarter) return false;
+    return true;
+  });
+}
+
+function filterBudget(rows, f) {
+  return rows.filter(r => {
+    if (f.year && r.Year !== f.year) return false;
+    if (f.quarter && Math.ceil(r.Month / 3) !== f.quarter) return false;
+    return true;
+  });
+}
+
+function filterCf(rows, f) {
+  return rows.filter(r => {
+    if (f.year && r.Year !== f.year) return false;
+    if (f.quarter && Math.ceil(r.Month / 3) !== f.quarter) return false;
+    return true;
+  });
+}
+
+// ========================================================================
+// RENDER
+// ========================================================================
+function render() {
+  const f = getFilters();
+  const txn = filterTxn(DATA.FactTransactions, f);
+  const budget = filterBudget(DATA.FactBudget, f);
+  const cf = filterCf(DATA.FactCashFlow, f);
+
+  const rev = txn.filter(t => ACCT_MAP[t.AccountID]?.AccountType === 'Revenue');
+  const exp = txn.filter(t => ACCT_MAP[t.AccountID]?.AccountType === 'Expense');
+  const cogs = txn.filter(t => ACCT_MAP[t.AccountID]?.Category === 'COGS');
+  const opex = txn.filter(t => ACCT_MAP[t.AccountID]?.Category === 'Operating Expenses');
+  const tax = txn.filter(t => ACCT_MAP[t.AccountID]?.Category === 'Tax');
+
+  const totalRev = rev.reduce((s,r) => s + r.Amount, 0);
+  const totalExp = exp.reduce((s,r) => s + r.Amount, 0);
+  const totalCogs = cogs.reduce((s,r) => s + r.Amount, 0);
+  const totalOpex = opex.reduce((s,r) => s + r.Amount, 0);
+  const totalTax = tax.reduce((s,r) => s + r.Amount, 0);
+  const grossProfit = totalRev - totalCogs;
+  const netIncome = totalRev - totalExp;
+  const grossMargin = totalRev ? grossProfit / totalRev : 0;
+  const netMargin = totalRev ? netIncome / totalRev : 0;
+
+  // PY comparison
+  let yoyGrowth = null;
+  if (f.year) {
+    const pyFilter = { ...f, year: f.year - 1 };
+    const pyTxn = filterTxn(DATA.FactTransactions, pyFilter);
+    const pyRev = pyTxn.filter(t => ACCT_MAP[t.AccountID]?.AccountType === 'Revenue').reduce((s,r) => s + r.Amount, 0);
+    if (pyRev > 0) yoyGrowth = (totalRev - pyRev) / pyRev;
+  }
+
+  // Budget
+  const revBudget = budget.filter(b => ACCT_MAP[b.AccountID]?.AccountType === 'Revenue').reduce((s,r) => s + r.BudgetAmount, 0);
+  const expBudget = budget.filter(b => ACCT_MAP[b.AccountID]?.AccountType === 'Expense').reduce((s,r) => s + r.BudgetAmount, 0);
+  const revVariance = totalRev - revBudget;
+  const attainment = revBudget ? totalRev / revBudget : 0;
+
+  renderSummary(totalRev, netIncome, grossMargin, yoyGrowth, attainment, txn, rev, exp);
+  renderPnl(totalRev, totalCogs, grossProfit, totalOpex, totalTax, netIncome, grossMargin, netMargin, txn);
+  renderBudget(totalRev, revBudget, revVariance, attainment, txn, budget);
+  renderCashFlow(cf);
+  renderDepartments(rev, exp);
+}
+
+// ========================================================================
+// PAGE 1: SUMMARY
+// ========================================================================
+function renderSummary(totalRev, netIncome, grossMargin, yoyGrowth, attainment, txn, rev, exp) {
+  const kpiHtml = `
+    <div class="kpi-card">
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value">${fmt(totalRev)}</div>
+      ${yoyGrowth !== null ? `<div class="kpi-change ${yoyGrowth >= 0 ? 'up' : 'down'}">${yoyGrowth >= 0 ? '&#9650;' : '&#9660;'} ${fmtPct(Math.abs(yoyGrowth))} YoY</div>` : ''}
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Net Income</div>
+      <div class="kpi-value">${fmt(netIncome)}</div>
+      <div class="kpi-change ${netIncome >= 0 ? 'up' : 'down'}">${netIncome >= 0 ? 'Profit' : 'Loss'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Gross Margin</div>
+      <div class="kpi-value small">${fmtPct(grossMargin)}</div>
+      <div class="gauge-bar"><div class="gauge-fill" style="width:${Math.min(grossMargin*100,100)}%;background:${grossMargin>=0.5?'var(--positive)':'var(--negative)'}"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Budget Attainment</div>
+      <div class="kpi-value small">${fmtPct(attainment)}</div>
+      <div class="gauge-bar"><div class="gauge-fill" style="width:${Math.min(attainment*100,100)}%;background:${attainment>=1?'var(--positive)':'var(--orange)'}"></div></div>
+    </div>`;
+  document.getElementById('kpi-summary').innerHTML = kpiHtml;
+
+  // Monthly Revenue & Net Income Trend
+  const monthly = {};
+  txn.forEach(t => {
+    const ym = Math.floor(t.DateKey / 100);
+    if (!monthly[ym]) monthly[ym] = { rev: 0, exp: 0 };
+    if (ACCT_MAP[t.AccountID]?.AccountType === 'Revenue') monthly[ym].rev += t.Amount;
+    else monthly[ym].exp += t.Amount;
+  });
+  const ymKeys = Object.keys(monthly).sort();
+  const labels = ymKeys.map(k => { const m = +k.toString().slice(4); return monthLabel(m) + ' ' + k.toString().slice(2,4); });
+
+  destroyChart('chartRevTrend');
+  CHARTS.chartRevTrend = new Chart(document.getElementById('chartRevTrend'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Revenue', data: ymKeys.map(k => monthly[k].rev), backgroundColor: 'rgba(26,188,156,0.7)', borderRadius: 4, order: 2 },
+        { label: 'Net Income', data: ymKeys.map(k => monthly[k].rev - monthly[k].exp), type: 'line', borderColor: '#2C3E50', borderWidth: 2, pointRadius: 2, tension: 0.3, order: 1 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.6, scales: { y: { ticks: { callback: v => fmt(v) } } }, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Revenue by department
+  const deptRev = {};
+  rev.forEach(t => {
+    const name = DEPT_MAP[t.DepartmentID]?.DepartmentName || 'Unknown';
+    deptRev[name] = (deptRev[name] || 0) + t.Amount;
+  });
+  const deptEntries = Object.entries(deptRev).sort((a,b) => b[1] - a[1]);
+
+  destroyChart('chartRevDept');
+  CHARTS.chartRevDept = new Chart(document.getElementById('chartRevDept'), {
+    type: 'bar',
+    data: {
+      labels: deptEntries.map(e => e[0]),
+      datasets: [{ data: deptEntries.map(e => e[1]), backgroundColor: ['#2C3E50','#1ABC9C','#3498DB','#9B59B6','#E67E22','#E74C3C','#27AE60','#F39C12'] }]
+    },
+    options: { indexAxis: 'y', responsive: true, aspectRatio: 1.4, plugins: { legend: { display: false } }, scales: { x: { ticks: { callback: v => fmt(v) } } } }
+  });
+
+  // Expense breakdown by subcategory
+  const subExp = {};
+  exp.forEach(t => {
+    const sub = ACCT_MAP[t.AccountID]?.SubCategory || 'Other';
+    subExp[sub] = (subExp[sub] || 0) + t.Amount;
+  });
+  const subEntries = Object.entries(subExp).sort((a,b) => b[1] - a[1]);
+
+  destroyChart('chartExpBreakdown');
+  CHARTS.chartExpBreakdown = new Chart(document.getElementById('chartExpBreakdown'), {
+    type: 'doughnut',
+    data: {
+      labels: subEntries.map(e => e[0]),
+      datasets: [{ data: subEntries.map(e => e[1]), backgroundColor: ['#2C3E50','#1ABC9C','#3498DB','#9B59B6','#E67E22','#E74C3C','#27AE60','#F39C12','#95A5A6','#1F77B4'] }]
+    },
+    options: { responsive: true, aspectRatio: 1.3, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+  });
+}
+
+// ========================================================================
+// PAGE 2: P&L
+// ========================================================================
+function renderPnl(totalRev, totalCogs, grossProfit, totalOpex, totalTax, netIncome, grossMargin, netMargin, txn) {
+  document.getElementById('kpi-pnl').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Gross Profit</div><div class="kpi-value small">${fmt(grossProfit)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Gross Margin</div><div class="kpi-value small">${fmtPct(grossMargin)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Net Income</div><div class="kpi-value small">${fmt(netIncome)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Net Margin</div><div class="kpi-value small">${fmtPct(netMargin)}</div></div>`;
+
+  // Waterfall
+  destroyChart('chartWaterfall');
+  const wfLabels = ['Revenue', 'COGS', 'Gross Profit', 'OpEx', 'Tax', 'Net Income'];
+  const wfData = [totalRev, -totalCogs, grossProfit, -totalOpex, -totalTax, netIncome];
+  const wfColors = wfData.map(v => v >= 0 ? 'rgba(26,188,156,0.8)' : 'rgba(231,76,60,0.8)');
+  CHARTS.chartWaterfall = new Chart(document.getElementById('chartWaterfall'), {
+    type: 'bar',
+    data: { labels: wfLabels, datasets: [{ data: wfData.map(Math.abs), backgroundColor: wfColors, borderRadius: 4 }] },
+    options: { responsive: true, aspectRatio: 1.5, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(wfData[ctx.dataIndex]) } } }, scales: { y: { ticks: { callback: v => fmt(v) } } } }
+  });
+
+  // Quarterly P&L table
+  const qData = {};
+  txn.forEach(t => {
+    const y = Math.floor(t.DateKey / 10000);
+    const m = Math.floor((t.DateKey % 10000) / 100);
+    const q = `${y} Q${Math.ceil(m/3)}`;
+    if (!qData[q]) qData[q] = { rev: 0, cogs: 0, opex: 0, tax: 0 };
+    const acct = ACCT_MAP[t.AccountID];
+    if (acct?.AccountType === 'Revenue') qData[q].rev += t.Amount;
+    if (acct?.Category === 'COGS') qData[q].cogs += t.Amount;
+    if (acct?.Category === 'Operating Expenses') qData[q].opex += t.Amount;
+    if (acct?.Category === 'Tax') qData[q].tax += t.Amount;
+  });
+  const qKeys = Object.keys(qData).sort().slice(-4);
+  let html = `<thead><tr><th></th>${qKeys.map(q => `<th class="num">${q}</th>`).join('')}</tr></thead><tbody>`;
+  html += `<tr><td><b>Revenue</b></td>${qKeys.map(q => `<td class="num">${fmt(qData[q].rev)}</td>`).join('')}</tr>`;
+  html += `<tr><td>COGS</td>${qKeys.map(q => `<td class="num neg">(${fmt(qData[q].cogs)})</td>`).join('')}</tr>`;
+  html += `<tr><td><b>Gross Profit</b></td>${qKeys.map(q => `<td class="num">${fmt(qData[q].rev - qData[q].cogs)}</td>`).join('')}</tr>`;
+  html += `<tr><td>Operating Exp</td>${qKeys.map(q => `<td class="num neg">(${fmt(qData[q].opex)})</td>`).join('')}</tr>`;
+  html += `<tr><td>Tax</td>${qKeys.map(q => `<td class="num neg">(${fmt(qData[q].tax)})</td>`).join('')}</tr>`;
+  html += `<tr style="border-top:2px solid var(--primary)"><td><b>Net Income</b></td>${qKeys.map(q => { const ni = qData[q].rev - qData[q].cogs - qData[q].opex - qData[q].tax; return `<td class="num ${ni>=0?'pos':'neg'}"><b>${fmt(ni)}</b></td>`; }).join('')}</tr>`;
+  html += `</tbody>`;
+  document.getElementById('tablePnl').innerHTML = html;
+
+  // Margin trend
+  destroyChart('chartMarginTrend');
+  CHARTS.chartMarginTrend = new Chart(document.getElementById('chartMarginTrend'), {
+    type: 'line',
+    data: {
+      labels: qKeys,
+      datasets: [
+        { label: 'Gross Margin', data: qKeys.map(q => (qData[q].rev - qData[q].cogs) / qData[q].rev), borderColor: '#1ABC9C', tension: 0.3, pointRadius: 4 },
+        { label: 'Net Margin', data: qKeys.map(q => (qData[q].rev - qData[q].cogs - qData[q].opex - qData[q].tax) / qData[q].rev), borderColor: '#2C3E50', tension: 0.3, pointRadius: 4 }
+      ]
+    },
+    options: { responsive: true, aspectRatio: 1.8, scales: { y: { ticks: { callback: v => fmtPct(v) } } }, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+// ========================================================================
+// PAGE 3: BUDGET
+// ========================================================================
+function renderBudget(totalRev, revBudget, revVariance, attainment, txn, budget) {
+  const varPct = revBudget ? revVariance / revBudget : 0;
+  document.getElementById('kpi-budget').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Actual Revenue</div><div class="kpi-value small">${fmt(totalRev)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Budget</div><div class="kpi-value small">${fmt(revBudget)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Variance</div><div class="kpi-value small ${revVariance>=0?'':'neg'}" style="color:${revVariance>=0?'var(--positive)':'var(--negative)'}">${revVariance>=0?'+':''}${fmt(revVariance)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Attainment</div><div class="kpi-value small">${fmtPct(attainment)}</div>
+      <div class="gauge-bar"><div class="gauge-fill" style="width:${Math.min(attainment*100,100)}%;background:${attainment>=1?'var(--positive)':'var(--negative)'}"></div></div>
+    </div>`;
+
+  // Monthly actual vs budget (revenue only)
+  const mActual = {}, mBudget = {};
+  txn.forEach(t => {
+    if (ACCT_MAP[t.AccountID]?.AccountType !== 'Revenue') return;
+    const ym = Math.floor(t.DateKey / 100);
+    mActual[ym] = (mActual[ym] || 0) + t.Amount;
+  });
+  budget.forEach(b => {
+    if (ACCT_MAP[b.AccountID]?.AccountType !== 'Revenue') return;
+    const ym = b.Year * 100 + b.Month;
+    mBudget[ym] = (mBudget[ym] || 0) + b.BudgetAmount;
+  });
+  const ymAll = [...new Set([...Object.keys(mActual), ...Object.keys(mBudget)])].sort();
+  const labels = ymAll.map(k => monthLabel(+k.toString().slice(4)) + ' ' + k.toString().slice(2,4));
+
+  destroyChart('chartBudgetComp');
+  CHARTS.chartBudgetComp = new Chart(document.getElementById('chartBudgetComp'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Actual', data: ymAll.map(k => mActual[k] || 0), backgroundColor: 'rgba(26,188,156,0.8)', borderRadius: 3 },
+        { label: 'Budget', data: ymAll.map(k => mBudget[k] || 0), backgroundColor: 'rgba(149,165,166,0.5)', borderRadius: 3 }
+      ]
+    },
+    options: { responsive: true, aspectRatio: 1.4, scales: { y: { ticks: { callback: v => fmt(v) } } }, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Variance by account
+  const acctActual = {}, acctBudget2 = {};
+  txn.forEach(t => {
+    const name = ACCT_MAP[t.AccountID]?.AccountName;
+    if (name) acctActual[name] = (acctActual[name] || 0) + t.Amount;
+  });
+  budget.forEach(b => {
+    const name = ACCT_MAP[b.AccountID]?.AccountName;
+    if (name) acctBudget2[name] = (acctBudget2[name] || 0) + b.BudgetAmount;
+  });
+  const acctNames = [...new Set([...Object.keys(acctActual)])].slice(0, 10);
+  const variances = acctNames.map(n => {
+    const isRev = DATA.DimAccounts.find(a => a.AccountName === n)?.AccountType === 'Revenue';
+    const diff = (acctActual[n] || 0) - (acctBudget2[n] || 0);
+    return isRev ? diff : -diff; // For expenses, under-budget is favorable
+  });
+
+  destroyChart('chartVarianceAcct');
+  CHARTS.chartVarianceAcct = new Chart(document.getElementById('chartVarianceAcct'), {
+    type: 'bar',
+    data: {
+      labels: acctNames,
+      datasets: [{ data: variances, backgroundColor: variances.map(v => v >= 0 ? 'rgba(39,174,96,0.7)' : 'rgba(231,76,60,0.7)'), borderRadius: 3 }]
+    },
+    options: { indexAxis: 'y', responsive: true, aspectRatio: 1.2, plugins: { legend: { display: false } }, scales: { x: { ticks: { callback: v => fmt(v) } } } }
+  });
+}
+
+// ========================================================================
+// PAGE 4: CASH FLOW
+// ========================================================================
+function renderCashFlow(cf) {
+  const opCf = cf.filter(r => r.Activity === 'Operating').reduce((s,r) => s + r.Amount, 0);
+  const invCf = cf.filter(r => r.Activity === 'Investing').reduce((s,r) => s + r.Amount, 0);
+  const finCf = cf.filter(r => r.Activity === 'Financing').reduce((s,r) => s + r.Amount, 0);
+  const netCf = opCf + invCf + finCf;
+  const capex = cf.filter(r => r.LineItem === 'Capital Expenditures').reduce((s,r) => s + r.Amount, 0);
+  const fcf = opCf + capex;
+
+  document.getElementById('kpi-cf').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Operating CF</div><div class="kpi-value small" style="color:${opCf>=0?'var(--positive)':'var(--negative)'}">${fmt(opCf)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Investing CF</div><div class="kpi-value small" style="color:${invCf>=0?'var(--positive)':'var(--negative)'}">${fmt(invCf)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Financing CF</div><div class="kpi-value small" style="color:${finCf>=0?'var(--positive)':'var(--negative)'}">${fmt(finCf)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Free Cash Flow</div><div class="kpi-value small" style="color:${fcf>=0?'var(--positive)':'var(--negative)'}">${fmt(fcf)}</div></div>`;
+
+  // CF by activity (bar)
+  destroyChart('chartCfActivity');
+  const acts = ['Operating', 'Investing', 'Financing', 'Net'];
+  const actVals = [opCf, invCf, finCf, netCf];
+  CHARTS.chartCfActivity = new Chart(document.getElementById('chartCfActivity'), {
+    type: 'bar',
+    data: {
+      labels: acts,
+      datasets: [{ data: actVals, backgroundColor: actVals.map(v => v >= 0 ? 'rgba(26,188,156,0.8)' : 'rgba(231,76,60,0.8)'), borderRadius: 6 }]
+    },
+    options: { responsive: true, aspectRatio: 1.5, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => fmt(v) } } } }
+  });
+
+  // Monthly CF trend (stacked)
+  const monthlyCf = {};
+  cf.forEach(r => {
+    const ym = r.Year * 100 + r.Month;
+    if (!monthlyCf[ym]) monthlyCf[ym] = { Operating: 0, Investing: 0, Financing: 0 };
+    monthlyCf[ym][r.Activity] += r.Amount;
+  });
+  const ymCf = Object.keys(monthlyCf).sort();
+  const cfLabels = ymCf.map(k => monthLabel(+k.toString().slice(4)) + ' ' + k.toString().slice(2,4));
+
+  destroyChart('chartCfTrend');
+  CHARTS.chartCfTrend = new Chart(document.getElementById('chartCfTrend'), {
+    type: 'bar',
+    data: {
+      labels: cfLabels,
+      datasets: [
+        { label: 'Operating', data: ymCf.map(k => monthlyCf[k].Operating), backgroundColor: 'rgba(26,188,156,0.7)' },
+        { label: 'Investing', data: ymCf.map(k => monthlyCf[k].Investing), backgroundColor: 'rgba(231,76,60,0.6)' },
+        { label: 'Financing', data: ymCf.map(k => monthlyCf[k].Financing), backgroundColor: 'rgba(52,152,219,0.6)' }
+      ]
+    },
+    options: { responsive: true, aspectRatio: 1.4, scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => fmt(v) } } }, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+// ========================================================================
+// PAGE 5: DEPARTMENTS
+// ========================================================================
+function renderDepartments(rev, exp) {
+  const deptStats = {};
+  rev.forEach(t => {
+    const d = DEPT_MAP[t.DepartmentID];
+    if (!d) return;
+    if (!deptStats[d.DepartmentName]) deptStats[d.DepartmentName] = { rev: 0, exp: 0, region: d.Region, head: d.DepartmentHead };
+    deptStats[d.DepartmentName].rev += t.Amount;
+  });
+  exp.forEach(t => {
+    const d = DEPT_MAP[t.DepartmentID];
+    if (!d) return;
+    if (!deptStats[d.DepartmentName]) deptStats[d.DepartmentName] = { rev: 0, exp: 0, region: d.Region, head: d.DepartmentHead };
+    deptStats[d.DepartmentName].exp += t.Amount;
+  });
+
+  const deptArr = Object.entries(deptStats).sort((a,b) => b[1].rev - a[1].rev);
+  const maxRev = deptArr[0]?.[1].rev || 1;
+
+  // Bar visualization
+  const barsHtml = deptArr.map(([name, d]) => `
+    <div class="progress-row">
+      <div class="progress-label">${name}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(d.rev/maxRev*100).toFixed(1)}%;background:var(--accent)"></div></div>
+      <div class="progress-value">${fmt(d.rev)}</div>
+    </div>`).join('');
+  document.getElementById('deptBars').innerHTML = barsHtml;
+
+  // Table
+  let thtml = `<thead><tr><th>Department</th><th>Head</th><th class="num">Revenue</th><th class="num">Expenses</th><th class="num">Net</th><th class="num">Margin</th></tr></thead><tbody>`;
+  deptArr.forEach(([name, d]) => {
+    const net = d.rev - d.exp;
+    const margin = d.rev ? net / d.rev : 0;
+    thtml += `<tr><td>${name}</td><td>${d.head}</td><td class="num">${fmt(d.rev)}</td><td class="num">${fmt(d.exp)}</td><td class="num ${net>=0?'pos':'neg'}">${fmt(net)}</td><td class="num ${margin>=0?'pos':'neg'}">${fmtPct(margin)}</td></tr>`;
+  });
+  thtml += `</tbody>`;
+  document.getElementById('tableDept').innerHTML = thtml;
+
+  // Region chart
+  const regionData = {};
+  deptArr.forEach(([name, d]) => { regionData[d.region] = (regionData[d.region] || 0) + d.rev; });
+  const regionEntries = Object.entries(regionData).sort((a,b) => b[1] - a[1]);
+
+  destroyChart('chartRegion');
+  CHARTS.chartRegion = new Chart(document.getElementById('chartRegion'), {
+    type: 'doughnut',
+    data: {
+      labels: regionEntries.map(e => e[0]),
+      datasets: [{ data: regionEntries.map(e => e[1]), backgroundColor: ['#2C3E50','#1ABC9C','#3498DB','#9B59B6'] }]
+    },
+    options: { responsive: true, aspectRatio: 1.3, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+// ========================================================================
+// UTILITIES
+// ========================================================================
+function destroyChart(id) { if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; } }
+
+// Tab switching
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('page-' + tab.dataset.page).classList.add('active');
+});
+
+// Filter change
+document.getElementById('filterYear').addEventListener('change', render);
+document.getElementById('filterQuarter').addEventListener('change', render);
+
+// Init
+loadData();
+</script>
+</body>
+</html>
