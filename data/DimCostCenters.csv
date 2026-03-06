@@ -1,0 +1,6 @@
+CostCenterID,CostCenterName,Location
+CC-100,Corporate HQ,New York
+CC-200,West Coast Office,San Francisco
+CC-300,London Office,London
+CC-400,Tokyo Office,Tokyo
+CC-500,Remote Operations,Virtual

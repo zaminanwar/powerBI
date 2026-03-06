@@ -1,0 +1,278 @@
+// ============================================================================
+// POWER BI FINANCE DASHBOARD - DAX MEASURES
+// Copy these measures into Power BI Desktop (Modeling > New Measure)
+// ============================================================================
+
+// ============================================================================
+// INCOME STATEMENT MEASURES
+// ============================================================================
+
+// Total Revenue
+Total Revenue =
+CALCULATE(
+    SUM(FactTransactions[Amount]),
+    DimAccounts[AccountType] = "Revenue"
+)
+
+// Total Expenses
+Total Expenses =
+CALCULATE(
+    SUM(FactTransactions[Amount]),
+    DimAccounts[AccountType] = "Expense"
+)
+
+// COGS (Cost of Goods Sold)
+COGS =
+CALCULATE(
+    SUM(FactTransactions[Amount]),
+    DimAccounts[Category] = "COGS"
+)
+
+// Gross Profit
+Gross Profit =
+[Total Revenue] - [COGS]
+
+// Gross Margin %
+Gross Margin % =
+DIVIDE([Gross Profit], [Total Revenue], 0)
+
+// Operating Expenses (excl. COGS and Tax)
+Operating Expenses =
+CALCULATE(
+    SUM(FactTransactions[Amount]),
+    DimAccounts[Category] = "Operating Expenses"
+)
+
+// EBITDA
+EBITDA =
+[Gross Profit] - [Operating Expenses] +
+CALCULATE(
+    SUM(FactTransactions[Amount]),
+    DimAccounts[AccountName] = "Depreciation"
+)
+
+// Net Income
+Net Income =
+[Total Revenue] - [Total Expenses]
+
+// Net Profit Margin %
+Net Profit Margin % =
+DIVIDE([Net Income], [Total Revenue], 0)
+
+// ============================================================================
+// BUDGET & VARIANCE MEASURES
+// ============================================================================
+
+// Total Budget
+Total Budget =
+SUM(FactBudget[BudgetAmount])
+
+// Revenue Budget
+Revenue Budget =
+CALCULATE(
+    SUM(FactBudget[BudgetAmount]),
+    DimAccounts[AccountType] = "Revenue"
+)
+
+// Expense Budget
+Expense Budget =
+CALCULATE(
+    SUM(FactBudget[BudgetAmount]),
+    DimAccounts[AccountType] = "Expense"
+)
+
+// Revenue Variance (Actual - Budget)
+Revenue Variance =
+[Total Revenue] - [Revenue Budget]
+
+// Revenue Variance %
+Revenue Variance % =
+DIVIDE([Revenue Variance], [Revenue Budget], 0)
+
+// Expense Variance (Budget - Actual, positive = favorable)
+Expense Variance =
+[Expense Budget] - [Total Expenses]
+
+// Expense Variance %
+Expense Variance % =
+DIVIDE([Expense Variance], [Expense Budget], 0)
+
+// Budget Attainment %
+Budget Attainment % =
+DIVIDE([Total Revenue], [Revenue Budget], 0)
+
+// ============================================================================
+// TIME INTELLIGENCE MEASURES
+// ============================================================================
+
+// Revenue - Prior Year
+Revenue PY =
+CALCULATE(
+    [Total Revenue],
+    SAMEPERIODLASTYEAR(DimDate[Date])
+)
+
+// Revenue YoY Growth
+Revenue YoY Growth =
+DIVIDE(
+    [Total Revenue] - [Revenue PY],
+    [Revenue PY],
+    0
+)
+
+// Revenue YoY Growth %
+Revenue YoY Growth % =
+[Revenue YoY Growth]
+
+// Revenue - Year to Date
+Revenue YTD =
+CALCULATE(
+    [Total Revenue],
+    DATESYTD(DimDate[Date])
+)
+
+// Revenue - Prior Year to Date
+Revenue PYTD =
+CALCULATE(
+    [Total Revenue],
+    DATESYTD(SAMEPERIODLASTYEAR(DimDate[Date]))
+)
+
+// Revenue YTD Growth %
+Revenue YTD Growth % =
+DIVIDE(
+    [Revenue YTD] - [Revenue PYTD],
+    [Revenue PYTD],
+    0
+)
+
+// Expenses YTD
+Expenses YTD =
+CALCULATE(
+    [Total Expenses],
+    DATESYTD(DimDate[Date])
+)
+
+// Net Income YTD
+Net Income YTD =
+[Revenue YTD] - [Expenses YTD]
+
+// Revenue - Quarter to Date
+Revenue QTD =
+CALCULATE(
+    [Total Revenue],
+    DATESQTD(DimDate[Date])
+)
+
+// Revenue - Month over Month Growth %
+Revenue MoM Growth % =
+VAR CurrentMonthRevenue = [Total Revenue]
+VAR PreviousMonthRevenue =
+    CALCULATE(
+        [Total Revenue],
+        DATEADD(DimDate[Date], -1, MONTH)
+    )
+RETURN
+DIVIDE(
+    CurrentMonthRevenue - PreviousMonthRevenue,
+    PreviousMonthRevenue,
+    0
+)
+
+// Running Total Revenue (cumulative within year)
+Revenue Running Total =
+CALCULATE(
+    [Total Revenue],
+    FILTER(
+        ALL(DimDate),
+        DimDate[Date] <= MAX(DimDate[Date])
+            && DimDate[Year] = MAX(DimDate[Year])
+    )
+)
+
+// ============================================================================
+// CASH FLOW MEASURES
+// ============================================================================
+
+// Operating Cash Flow
+Operating Cash Flow =
+CALCULATE(
+    SUM(FactCashFlow[Amount]),
+    FactCashFlow[Activity] = "Operating"
+)
+
+// Investing Cash Flow
+Investing Cash Flow =
+CALCULATE(
+    SUM(FactCashFlow[Amount]),
+    FactCashFlow[Activity] = "Investing"
+)
+
+// Financing Cash Flow
+Financing Cash Flow =
+CALCULATE(
+    SUM(FactCashFlow[Amount]),
+    FactCashFlow[Activity] = "Financing"
+)
+
+// Net Cash Flow
+Net Cash Flow =
+SUM(FactCashFlow[Amount])
+
+// Free Cash Flow (Operating CF + CapEx)
+Free Cash Flow =
+[Operating Cash Flow] +
+CALCULATE(
+    SUM(FactCashFlow[Amount]),
+    FactCashFlow[LineItem] = "Capital Expenditures"
+)
+
+// ============================================================================
+// KPI / SCORECARD MEASURES
+// ============================================================================
+
+// Revenue KPI Status (icon-ready)
+Revenue KPI Status =
+SWITCH(
+    TRUE(),
+    [Revenue Variance %] >= 0.05, 3,   // Green - exceeding budget by 5%+
+    [Revenue Variance %] >= 0, 2,       // Yellow - meeting budget
+    1                                    // Red - below budget
+)
+
+// Expense KPI Status
+Expense KPI Status =
+SWITCH(
+    TRUE(),
+    [Expense Variance %] >= 0.05, 3,
+    [Expense Variance %] >= 0, 2,
+    1
+)
+
+// Operating Expense Ratio
+OpEx Ratio =
+DIVIDE([Operating Expenses], [Total Revenue], 0)
+
+// Revenue per Department
+Revenue per Department =
+DIVIDE(
+    [Total Revenue],
+    DISTINCTCOUNT(DimDepartments[DepartmentID]),
+    0
+)
+
+// ============================================================================
+// FORMATTING HELPERS
+// ============================================================================
+
+// Display Amount (formatted)
+Amount Display =
+IF(
+    ABS([Net Income]) >= 1000000,
+    FORMAT([Net Income] / 1000000, "$#,##0.0M"),
+    IF(
+        ABS([Net Income]) >= 1000,
+        FORMAT([Net Income] / 1000, "$#,##0.0K"),
+        FORMAT([Net Income], "$#,##0")
+    )
+)

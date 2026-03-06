@@ -1,0 +1,82 @@
+{
+    "name": "Finance Dashboard Theme",
+    "dataColors": [
+        "#2C3E50",
+        "#1ABC9C",
+        "#3498DB",
+        "#9B59B6",
+        "#E67E22",
+        "#E74C3C",
+        "#27AE60",
+        "#F39C12",
+        "#1F77B4",
+        "#95A5A6"
+    ],
+    "background": "#ECF0F1",
+    "foreground": "#2C3E50",
+    "tableAccent": "#1ABC9C",
+    "good": "#27AE60",
+    "neutral": "#F39C12",
+    "bad": "#E74C3C",
+    "maximum": "#27AE60",
+    "center": "#F39C12",
+    "minimum": "#E74C3C",
+    "visualStyles": {
+        "*": {
+            "*": {
+                "background": [{
+                    "color": {"solid": {"color": "#FFFFFF"}},
+                    "transparency": 0
+                }],
+                "border": [{
+                    "color": {"solid": {"color": "#DEE2E6"}},
+                    "width": 1,
+                    "show": true
+                }],
+                "dropShadow": [{
+                    "show": true,
+                    "color": {"solid": {"color": "#000000"}},
+                    "position": "Outer",
+                    "preset": "BottomRight",
+                    "transparency": 85
+                }]
+            },
+            "title": [{
+                "show": true,
+                "fontColor": {"solid": {"color": "#2C3E50"}},
+                "fontSize": 12,
+                "fontFamily": "Segoe UI Semibold"
+            }]
+        },
+        "page": {
+            "*": {
+                "background": [{
+                    "color": {"solid": {"color": "#ECF0F1"}},
+                    "transparency": 0
+                }]
+            }
+        },
+        "card": {
+            "*": {
+                "labels": [{
+                    "color": {"solid": {"color": "#2C3E50"}},
+                    "fontSize": 28,
+                    "fontFamily": "Segoe UI Bold"
+                }],
+                "categoryLabels": [{
+                    "show": true,
+                    "color": {"solid": {"color": "#7F8C8D"}},
+                    "fontSize": 10
+                }]
+            }
+        },
+        "textbox": {
+            "*": {
+                "background": [{
+                    "color": {"solid": {"color": "#2C3E50"}},
+                    "transparency": 0
+                }]
+            }
+        }
+    }
+}

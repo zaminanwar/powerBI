@@ -1,0 +1,23 @@
+AccountID,AccountName,AccountType,Category,SubCategory
+4001,Product Sales,Revenue,Operating Revenue,Product
+4002,Service Revenue,Revenue,Operating Revenue,Service
+4003,Subscription Revenue,Revenue,Operating Revenue,Recurring
+4004,Consulting Revenue,Revenue,Operating Revenue,Service
+4005,License Revenue,Revenue,Operating Revenue,Product
+4010,Interest Income,Revenue,Non-Operating Revenue,Financial
+5001,Cost of Goods Sold,Expense,COGS,Direct Cost
+5002,Direct Labor,Expense,COGS,Direct Cost
+5003,Manufacturing Overhead,Expense,COGS,Overhead
+6001,Salaries & Wages,Expense,Operating Expenses,Personnel
+6002,Employee Benefits,Expense,Operating Expenses,Personnel
+6003,Rent & Facilities,Expense,Operating Expenses,Facilities
+6004,Utilities,Expense,Operating Expenses,Facilities
+6005,Marketing & Advertising,Expense,Operating Expenses,Marketing
+6006,Travel & Entertainment,Expense,Operating Expenses,G&A
+6007,Professional Services,Expense,Operating Expenses,G&A
+6008,Software & Technology,Expense,Operating Expenses,Technology
+6009,Depreciation,Expense,Operating Expenses,Non-Cash
+6010,Insurance,Expense,Operating Expenses,G&A
+6011,Office Supplies,Expense,Operating Expenses,G&A
+6012,Training & Development,Expense,Operating Expenses,Personnel
+7001,Income Tax,Expense,Tax,Income Tax

@@ -1,0 +1,11 @@
+DepartmentID,DepartmentName,DepartmentHead,Region
+1,Sales,Sarah Johnson,North America
+2,Marketing,Michael Chen,North America
+3,Engineering,Priya Patel,North America
+4,Finance,David Kim,North America
+5,Human Resources,Lisa Rodriguez,North America
+6,Operations,James Wilson,North America
+7,Customer Support,Emma Davis,Europe
+8,Research & Development,Ahmed Hassan,Europe
+9,Sales - APAC,Yuki Tanaka,Asia Pacific
+10,Sales - EMEA,Oliver Brown,Europe
